@@ -183,8 +183,8 @@ build()
             cd openthread-1.1
 
             # Prep
-            # git clean -xfd
-            # ./bootstrap
+            git clean -xfd
+            ./bootstrap
 
             # Build
             options=("${build_1_1_env_common[@]}")
@@ -208,7 +208,7 @@ build()
             done
 
             # Clean up
-            # git clean -xfd
+            git clean -xfd
             ;;
     esac
 
@@ -262,7 +262,7 @@ main()
                 build ot-nrf528xx 1.1 "$@"
                 ;;
             efr32*)
-                # build ot-efr32 1.2 "$@"
+                build ot-efr32 1.2 "$@"
                 build ot-efr32 1.1 "$@"
                 ;;
         esac
