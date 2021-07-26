@@ -29,98 +29,257 @@
 
 set -euxo pipefail
 
-echo "OUTPUT_ROOT=${OUTPUT_ROOT?}"
+if [[ -n ${BASH_SOURCE[0]} ]]; then
+    script_path="${BASH_SOURCE[0]}"
+else
+    script_path="$0"
+fi
 
-readonly PLATFORM=nrf52840
+script_dir="$(dirname "$(realpath "$script_path")")"
+repo_dir="$(dirname "$script_dir")"
 
-readonly BUILD_1_2_OPTIONS=('-DOT_BOOTLOADER=USB'
-  '-DOT_REFERENCE_DEVICE=ON'
-  '-DOT_BORDER_ROUTER=ON'
-  '-DOT_SERVICE=ON'
-  '-DOT_COMMISSIONER=ON'
-  '-DOT_JOINER=ON'
-  '-DOT_MAC_FILTER=ON'
-  '-DDHCP6_SERVER=ON'
-  '-DDHCP6_CLIENT=ON'
-  '-DOT_DUA=ON'
-  '-DOT_MLR=ON'
-  '-DOT_CSL_RECEIVER=ON'
-  '-DOT_LINK_METRICS=ON'
-  '-DBORDER_AGENT=OFF'
-  '-DOT_COAP=OFF'
-  '-DOT_COAPS=OFF'
-  '-DOT_ECDSA=OFF'
-  '-DOT_FULL_LOGS=OFF'
-  '-DOT_IP6_FRAGM=OFF'
-  '-DOT_LINK_RAW=OFF'
-  '-DOT_MTD_NETDIAG=OFF'
-  '-DOT_SNTP_CLIENT=OFF'
-  '-DOT_UDP_FORWARD=OFF')
+# Global Vars
+platform=""
+build_type=""
+build_dir=""
 
-readonly BUILD_1_1_ENV=(
-  'BORDER_ROUTER=1'
-  'REFERENCE_DEVICE=1'
-  'COMMISSIONER=1'
-  'DHCP6_CLIENT=1'
-  'DHCP6_SERVER=1'
-  'JOINER=1'
-  'MAC_FILTER=1'
-  'BOOTLOADER=1'
-  'USB=1'
+readonly OT_PLATFORMS=(nrf52840 efr32mg1 efr32mg12 efr32mg13 efr32mg21)
+readonly build_1_2_options_common=(
+    '-DOT_THREAD_VERSION=1.2'
+    '-DOT_REFERENCE_DEVICE=ON'
+    '-DOT_BORDER_ROUTER=ON'
+    '-DOT_SERVICE=ON'
+    '-DOT_COMMISSIONER=ON'
+    '-DOT_JOINER=ON'
+    '-DOT_MAC_FILTER=ON'
+    '-DOT_DHCP6_SERVER=ON'
+    '-DOT_DHCP6_CLIENT=ON'
+    '-DOT_DUA=ON'
+    '-DOT_MLR=ON'
+    '-DOT_LINK_METRICS=ON'
+    '-DOT_BORDER_AGENT=OFF'
+    '-DOT_COAP=OFF'
+    '-DOT_COAPS=OFF'
+    '-DOT_ECDSA=OFF'
+    '-DOT_FULL_LOGS=OFF'
+    '-DOT_IP6_FRAGM=OFF'
+    '-DOT_LINK_RAW=OFF'
+    '-DOT_MTD_NETDIAG=OFF'
+    '-DOT_SNTP_CLIENT=OFF'
+    '-DOT_UDP_FORWARD=OFF'
 )
 
-NRFUTIL=/tmp/nrfutil-linux
-if [ ! -f $NRFUTIL ]; then
-  wget -O $NRFUTIL https://github.com/NordicSemiconductor/pc-nrfutil/releases/download/v6.1/nrfutil-linux
-  chmod +x $NRFUTIL
-fi
+readonly build_1_2_options_efr32=(
+    '-DOT_CSL_RECEIVER=OFF'
+)
 
-if [ ! -f /tmp/private.pem ]; then
-  $NRFUTIL keys generate /tmp/private.pem
-fi
-mkdir -p "$OUTPUT_ROOT"
+readonly build_1_2_options_nrf=(
+    '-DOT_BOOTLOADER=USB'
+    '-DOT_CSL_RECEIVER=ON'
+)
+
+readonly build_1_1_env_common=(
+    'BORDER_ROUTER=1'
+    'REFERENCE_DEVICE=1'
+    'COMMISSIONER=1'
+    'DHCP6_CLIENT=1'
+    'DHCP6_SERVER=1'
+    'JOINER=1'
+    'MAC_FILTER=1'
+    'BOOTLOADER=1'
+)
+
+readonly build_1_1_env_efr32=(
+    ""
+)
+
+readonly build_1_1_env_nrf=(
+    'USB=1'
+)
 
 # $1: The basename of the file to zip, e.g. ot-cli-ftd
 # $2: Thread version number, e.g. 1.2
-# $3: The binary path, defaulted as ./build-"$2"/bin/"$1"
-make_zip() {
-  local BINARY_PATH=${3:-"./build-$2/bin/$1"}
-  arm-none-eabi-objcopy -O ihex "$BINARY_PATH" "$1"-"$2".hex
-  $NRFUTIL pkg generate --debug-mode --hw-version 52 --sd-req 0 --application "$1"-"$2".hex --key-file /tmp/private.pem "$1"-"$2".zip
+# $3: The binary path (optional)
+package()
+{
+    # Parse Args
+    local basename=$1
+    local thread_version=$2
+    local binary_path=${3:-"${build_dir}/bin/${basename}"}
+
+    # Get build info
+    local commit_id=$(cd "${repo_dir}"/openthread && git rev-parse --short HEAD)
+    local timestamp=$(date +%Y%m%d)
+
+    # Generate .hex file
+    local hex_file="${basename}"-"${thread_version}".hex
+    arm-none-eabi-objcopy -O ihex "$binary_path" "${hex_file}"
+
+    # Zip
+    local zip_file="${basename}-${thread_version}-${timestamp}-${commit_id}.zip"
+    case "${platform}" in
+        nrf*)
+            $NRFUTIL pkg generate --debug-mode --hw-version 52 --sd-req 0 --application "${hex_file}" --key-file /tmp/private.pem "${zip_file}"
+            ;;
+        *)
+            zip "${zip_file}" "${hex_file}"
+            ;;
+    esac
+
+    # Distribute
+    mv "${zip_file}" "$OUTPUT_ROOT"
 }
 
-if [ "${REFERENCE_RELEASE_TYPE?}" = "certification" ]; then
-  (
-    cd ot-nrf528xx
-    git clean -xfd
-    COMMIT_ID=$(cd ../openthread && git rev-parse --short HEAD)
-    DATE=$(date +%Y%m%d)
-    rm -rf openthread
-    cp -r ../openthread .
-    OT_CMAKE_BUILD_DIR=build-1.2 ./script/build $PLATFORM USB_trans -DOT_THREAD_VERSION=1.2 "${BUILD_1_2_OPTIONS[@]}"
-    make_zip ot-cli-ftd 1.2
-    make_zip ot-rcp 1.2
-    mv ot-cli-ftd-1.2.zip ot-cli-ftd-$DATE-$COMMIT_ID-1.2.zip
-    mv ot-rcp-1.2.zip ot-rcp-$DATE-$COMMIT_ID-1.2.zip
-    mv ./*.zip "$OUTPUT_ROOT"
-    rm -rf openthread
-    git clean -xfd
-    git submodule update --force
-  )
+# $1: Path to platform's repo, e.g. ot-efr32, ot-nrf528xx
+# $2: Thread version number, e.g. 1.2
+build()
+{
+    local platform_repo=$1
+    local thread_version=$2
+    shift 2
 
-  (
-    cd openthread-1.1
-    COMMIT_ID=$(git rev-parse --short HEAD)
-    DATE=$(date +%Y%m%d)
-    git clean -xfd
-    ./bootstrap
-    make -f examples/Makefile-nrf52840 "${BUILD_1_1_ENV[@]}"
-    make_zip ot-cli-ftd 1.1 output/nrf52840/bin/ot-cli-ftd
-    mv ot-cli-ftd-1.1.zip ot-cli-ftd-$DATE-$COMMIT_ID-1.1.zip
-    mv ./*.zip "$OUTPUT_ROOT"
-    git clean -xfd
-  )
-elif [ "${REFERENCE_RELEASE_TYPE}" = "1.3" ]; then
-  OT_CMAKE_BUILD_DIR=build-1.2 ./script/build $PLATFORM USB_trans -DOT_THREAD_VERSION=1.2
-  make_zip ot-rcp 1.2
-fi
+    mkdir -p "$OUTPUT_ROOT"
+
+    case "${thread_version}" in
+        # Build OpenThread 1.2
+        "1.2")
+            cd ${platform_repo}
+            git clean -xfd
+
+            # Use OpenThread from top-level of repo
+            rm -rf openthread
+            ln -s ../openthread .
+
+            # Build
+            build_dir="${repo_dir}"/build-"${thread_version}"/"${platform}"
+            options=("${build_1_2_options_common[@]}")
+            case "${platform}" in
+                nrf*)
+                    options+=("${build_1_2_options_nrf[@]}")
+                    ;;
+                efr32*)
+                    options+=("${build_1_2_options_efr32[@]}")
+                    ;;
+            esac
+            OT_CMAKE_BUILD_DIR=${build_dir} ./script/build ${platform} ${build_type} "${options[@]}" "$@"
+
+            # Package and distribute
+            local dist_apps=(
+                ot-cli-ftd
+                ot-rcp
+            )
+            for app in ${dist_apps[@]}; do
+                package "${app}" "${thread_version}"
+            done
+
+            # Clean up
+            rm -rf openthread
+            git clean -xfd
+            git submodule update --force
+            ;;
+
+        # Build OpenThread 1.1
+        "1.1")
+            cd openthread-1.1
+
+            # Prep
+            # git clean -xfd
+            # ./bootstrap
+
+            # Build
+            options=("${build_1_1_env_common[@]}")
+            case "${platform}" in
+                nrf*)
+                    options+=("${build_1_1_env_nrf[@]}")
+                    ;;
+                efr32*)
+                    options+=(${build_1_1_env_efr32[@]} BOARD=$(printf '%s\n' "$BOARD" | awk '{ print toupper($0) }'))
+                    ;;
+            esac
+            make -f examples/Makefile-${platform} "${options[@]}" "$@"
+
+            # Package and distribute
+            local dist_apps=(
+                ot-cli-ftd
+                ot-rcp
+            )
+            for app in ${dist_apps[@]}; do
+                package ${app} ${thread_version} output/${platform}/bin/${app}
+            done
+
+            # Clean up
+            # git clean -xfd
+            ;;
+    esac
+
+    cd ${repo_dir}
+}
+
+die() { echo "$*" 1>&2 ; exit 1; }
+
+main()
+{
+    if [[ $# == 0 ]]; then
+        echo "Please specify a platform: ${OT_PLATFORMS[*]}"
+        exit 1
+    fi
+
+    # Check if the platform is supported.
+    platform="$1"
+    echo "${OT_PLATFORMS[@]}" | grep -wq "${platform}" || die "ERROR: Unsupported platform: ${platform}"
+    shift
+
+    # Print OUTPUT_ROOT. Error if OUTPUT_ROOT is not defined
+    echo "OUTPUT_ROOT=${OUTPUT_ROOT?}"
+
+    # ==========================================================================
+    # Prebuild
+    # ==========================================================================
+    case "${platform}" in
+        nrf*)
+            # Setup nrfutil-linux
+            NRFUTIL=/tmp/nrfutil-linux
+            if [ ! -f $NRFUTIL ]; then
+            wget -O $NRFUTIL https://github.com/NordicSemiconductor/pc-nrfutil/releases/download/v6.1/nrfutil-linux
+            chmod +x $NRFUTIL
+            fi
+
+            # Generate private key
+            if [ ! -f /tmp/private.pem ]; then
+                $NRFUTIL keys generate /tmp/private.pem
+            fi
+            ;;
+    esac
+
+    # ==========================================================================
+    # Build
+    # ==========================================================================
+    if [ "${REFERENCE_RELEASE_TYPE?}" = "certification" ]; then
+        case "${platform}" in
+            nrf*)
+                build_type="USB_trans" "$@"
+                build ot-nrf528xx 1.2 "$@"
+                build ot-nrf528xx 1.1 "$@"
+                ;;
+            efr32*)
+                # build ot-efr32 1.2 "$@"
+                build ot-efr32 1.1 "$@"
+                ;;
+        esac
+    elif [ "${REFERENCE_RELEASE_TYPE}" = "1.3" ]; then
+        case "${platform}" in
+            nrf*)
+                OT_CMAKE_BUILD_DIR=build-1.2 ./script/build $PLATFORM USB_trans -DOT_THREAD_VERSION=1.2
+                package ot-rcp 1.2
+                ;;
+            efr32*)
+                build ot-efr32 "$@"
+                ;;
+        esac
+    fi
+
+}
+
+main "$@"
+
+
