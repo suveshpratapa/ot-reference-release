@@ -113,6 +113,10 @@ package()
 
     # Generate .hex file
     local hex_file="${basename}"-"${thread_version}".hex
+    if [ ! -f "$binary_path" ]; then
+        echo "WARN: $binary_path does not exist. Skipping packaging"
+        return
+    fi
     arm-none-eabi-objcopy -O ihex "$binary_path" "${hex_file}"
 
     # Zip
@@ -158,7 +162,7 @@ build()
                     options+=("${build_1_2_options_nrf[@]}")
                     ;;
                 efr32*)
-                    options+=("${build_1_2_options_efr32[@]}")
+                    options+=("-DBOARD=${BOARD}" ${build_1_2_options_efr32[@]})
                     ;;
             esac
             OT_CMAKE_BUILD_DIR=${build_dir} ./script/build ${platform} ${build_type} "${options[@]}" "$@"
@@ -183,7 +187,8 @@ build()
             cd openthread-1.1
 
             # Prep
-            git clean -xfd
+            # TODO: Need to find some way to pull in GSDK 2.7 before starting efr32 builds in openthread 1.1
+            # git clean -xfd
             ./bootstrap
 
             # Build
@@ -193,7 +198,7 @@ build()
                     options+=("${build_1_1_env_nrf[@]}")
                     ;;
                 efr32*)
-                    options+=(${build_1_1_env_efr32[@]} BOARD=$(printf '%s\n' "$BOARD" | awk '{ print toupper($0) }'))
+                    options+=(${build_1_1_env_efr32[@]} BOARD=$(echo $BOARD | tr [a-z] [A-Z]))
                     ;;
             esac
             make -f examples/Makefile-${platform} "${options[@]}" "$@"
@@ -208,7 +213,8 @@ build()
             done
 
             # Clean up
-            git clean -xfd
+            # TODO: Need to find some way to pull in GSDK 2.7 before starting efr32 builds in openthread 1.1
+            # git clean -xfd
             ;;
     esac
 
