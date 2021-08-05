@@ -29,22 +29,61 @@
 
 set -euxo pipefail
 
-mkdir -p build
+readonly OT_PLATFORMS=(nrf52840 efr32mg1 efr32mg12 efr32mg13 efr32mg21)
 
-echo "REFERENCE_RELEASE_TYPE=${REFERENCE_RELEASE_TYPE?}"
+main()
+{
+    if [[ $# == 0 ]]; then
+        echo "Please specify a platform: ${OT_PLATFORMS[*]}"
+        exit 1
+    fi
 
-OUTPUT_ROOT=$(realpath build/ot-"${REFERENCE_RELEASE_TYPE?}-$(date +%Y%m%d)-$(cd openthread && git rev-parse --short HEAD)")
+    # Check if the platform is supported.
+    platform="$1"
+    echo "${OT_PLATFORMS[@]}" | grep -wq "${platform}" || die "ERROR: Unsupported platform: ${platform}"
+    shift
 
-mkdir -p "$OUTPUT_ROOT"/fw_dongle/
-OUTPUT_ROOT="$OUTPUT_ROOT"/fw_dongle/ ./script/make-firmware.bash
+    # ==========================================================================
+    # Prebuild
+    # ==========================================================================
+    mkdir -p build
+    echo "REFERENCE_RELEASE_TYPE=${REFERENCE_RELEASE_TYPE?}"
+    OUTPUT_ROOT=$(realpath build/ot-"${REFERENCE_RELEASE_TYPE?}-$(date +%Y%m%d)-$(cd openthread && git rev-parse --short HEAD)")
 
-if [ "${REFERENCE_RELEASE_TYPE?}" = "certification" ]; then
-  mkdir -p "$OUTPUT_ROOT"/thci
-  OUTPUT_ROOT="$OUTPUT_ROOT"/thci/ ./script/make-thci.bash
-fi
+    # ==========================================================================
+    # Build firmware
+    # ==========================================================================
+    mkdir -p "$OUTPUT_ROOT"/fw_dongle/
 
-mkdir -p "$OUTPUT_ROOT"
-OUTPUT_ROOT="$OUTPUT_ROOT" ./script/make-raspbian.bash
+    case "${platform}" in
+        nrf*)
+            OUTPUT_ROOT="$OUTPUT_ROOT"/fw_dongle/ ./script/make-firmware.bash "${platform}"
+            ;;
 
-cp -r doc/* "$OUTPUT_ROOT"
-cp CHANGELOG.txt "$OUTPUT_ROOT"
+        efr32*)
+            OUTPUT_ROOT="$OUTPUT_ROOT"/fw_dongle/ BOARD=${BOARD?Please specify a EFR32 Board} ./script/make-firmware.bash "${platform}"
+            ;;
+    esac
+
+    # ==========================================================================
+    # Build THCI
+    # ==========================================================================
+    if [ "${REFERENCE_RELEASE_TYPE?}" = "certification" ]; then
+    mkdir -p "$OUTPUT_ROOT"/thci
+    OUTPUT_ROOT="$OUTPUT_ROOT"/thci/ ./script/make-thci.bash
+    fi
+
+    # ==========================================================================
+    # Build raspian
+    # ==========================================================================
+    mkdir -p "$OUTPUT_ROOT"
+    OUTPUT_ROOT="$OUTPUT_ROOT" ./script/make-raspbian.bash
+
+    # ==========================================================================
+    # Package docs
+    # ==========================================================================
+    cp -r doc/* "$OUTPUT_ROOT"
+    cp CHANGELOG.txt "$OUTPUT_ROOT"
+}
+
+main "$@"
