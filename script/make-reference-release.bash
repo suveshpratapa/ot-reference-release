@@ -29,41 +29,23 @@
 
 set -euxo pipefail
 
-readonly OT_PLATFORMS=(nrf52840 efr32mg1 efr32mg12 efr32mg13 efr32mg21)
+readonly OT_PLATFORMS=(nrf52840 efr32mg12)
 
 main()
 {
-    if [[ $# == 0 ]]; then
-        echo "Please specify a platform: ${OT_PLATFORMS[*]}"
-        exit 1
-    fi
-
-    # Check if the platform is supported.
-    platform="$1"
-    echo "${OT_PLATFORMS[@]}" | grep -wq "${platform}" || die "ERROR: Unsupported platform: ${platform}"
-    shift
-
     # ==========================================================================
     # Prebuild
     # ==========================================================================
-    mkdir -p build
     echo "REFERENCE_RELEASE_TYPE=${REFERENCE_RELEASE_TYPE?}"
     OUTPUT_ROOT=$(realpath build/ot-"${REFERENCE_RELEASE_TYPE?}-$(date +%Y%m%d)-$(cd openthread && git rev-parse --short HEAD)")
+    mkdir -p $OUTPUT_ROOT
 
     # ==========================================================================
     # Build firmware
     # ==========================================================================
-    mkdir -p "$OUTPUT_ROOT"/fw_dongle/
-
-    case "${platform}" in
-        nrf*)
-            OUTPUT_ROOT="$OUTPUT_ROOT"/fw_dongle/ ./script/make-firmware.bash "${platform}"
-            ;;
-
-        efr32*)
-            OUTPUT_ROOT="$OUTPUT_ROOT"/fw_dongle/ BOARD=${BOARD?Please specify a EFR32 Board} ./script/make-firmware.bash "${platform}"
-            ;;
-    esac
+    for platform in ${OT_PLATFORMS[@]}; do
+        OUTPUT_ROOT="$OUTPUT_ROOT"/fw_dongle_${platform}/ ./script/make-firmware.bash "${platform}"
+    done
 
     # ==========================================================================
     # Build THCI

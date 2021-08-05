@@ -42,7 +42,7 @@ repo_dir="$(dirname "$script_dir")"
 platform=""
 build_dir=""
 
-readonly OT_PLATFORMS=(nrf52840 efr32mg1 efr32mg12 efr32mg13 efr32mg21)
+readonly OT_PLATFORMS=(nrf52840 efr32mg12)
 
 readonly build_1_3_options_common=(
     ""
@@ -181,9 +181,8 @@ build()
                 nrf*)
                     options+=("${build_1_3_options_nrf[@]}")
                     ;;
-                efr32*)
-                    BOARD=${BOARD?Please specify a EFR32 board}
-                    options+=("-DBOARD=${BOARD}" ${build_1_3_options_efr32[@]})
+                efr32mg12)
+                    options+=("-DBOARD=brd4166a" ${build_1_3_options_efr32[@]})
                     ;;
             esac
             OT_CMAKE_BUILD_DIR=${build_dir} ./script/build ${platform} ${build_type:-""} "${options[@]}" "$@"

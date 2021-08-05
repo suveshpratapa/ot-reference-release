@@ -50,6 +50,8 @@ When `REFERENCE_RELEASE_TYPE` is `1.3`, reference release contains following com
 - Change log
 - Quick start guide
 
+- Note: Currently, only nRF52840 dongles and EFR32MG12 BRD4166A boards are supported for CLI/RCP firmwares.
+
 # Contributing
 
 We would love for you to contribute to OpenThread and help make it even better than it is today! See our [Contributing Guidelines](https://github.com/openthread/openthread/blob/main/CONTRIBUTING.md) for more information.
