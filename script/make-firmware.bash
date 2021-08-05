@@ -161,9 +161,6 @@ build()
                 nrf*)
                     options+=("${build_1_2_options_nrf[@]}")
                     ;;
-                efr32*)
-                    options+=("-DBOARD=${BOARD}" ${build_1_2_options_efr32[@]})
-                    ;;
             esac
             OT_CMAKE_BUILD_DIR=${build_dir} ./script/build ${platform} ${build_type} "${options[@]}" "$@"
 
@@ -187,8 +184,7 @@ build()
             cd openthread-1.1
 
             # Prep
-            # TODO: Need to find some way to pull in GSDK 2.7 before starting efr32 builds in openthread 1.1
-            # git clean -xfd
+            git clean -xfd
             ./bootstrap
 
             # Build
@@ -196,9 +192,6 @@ build()
             case "${platform}" in
                 nrf*)
                     options+=("${build_1_1_env_nrf[@]}")
-                    ;;
-                efr32*)
-                    options+=(${build_1_1_env_efr32[@]} BOARD=$(echo $BOARD | tr [a-z] [A-Z]))
                     ;;
             esac
             make -f examples/Makefile-${platform} "${options[@]}" "$@"
@@ -213,8 +206,7 @@ build()
             done
 
             # Clean up
-            # TODO: Need to find some way to pull in GSDK 2.7 before starting efr32 builds in openthread 1.1
-            # git clean -xfd
+            git clean -xfd
             ;;
     esac
 
@@ -267,10 +259,6 @@ main()
                 build ot-nrf528xx 1.2 "$@"
                 build ot-nrf528xx 1.1 "$@"
                 ;;
-            efr32*)
-                build ot-efr32 1.2 "$@"
-                build ot-efr32 1.1 "$@"
-                ;;
         esac
     elif [ "${REFERENCE_RELEASE_TYPE}" = "1.3" ]; then
         case "${platform}" in
@@ -279,7 +267,7 @@ main()
                 package ot-rcp 1.2
                 ;;
             efr32*)
-                build ot-efr32 "$@"
+                build ot-efr32 1.3 "$@"
                 ;;
         esac
     fi
