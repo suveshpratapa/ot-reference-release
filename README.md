@@ -50,7 +50,7 @@ When `REFERENCE_RELEASE_TYPE` is `1.3`, reference release contains following com
 - Change log
 - Quick start guide
 
-- Note: Currently, only nRF52840 dongles and EFR32MG12 BRD4166A boards are supported for CLI/RCP firmwares.
+Note: Currently, only nRF52840 dongles and EFR32MG12 BRD4166A boards are supported for CLI/RCP firmwares.
 
 # Contributing
 
