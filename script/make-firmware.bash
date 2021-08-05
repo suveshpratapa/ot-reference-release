@@ -44,6 +44,23 @@ build_type=""
 build_dir=""
 
 readonly OT_PLATFORMS=(nrf52840 efr32mg1 efr32mg12 efr32mg13 efr32mg21)
+
+readonly build_1_3_options_common=(
+    ""
+)
+
+readonly build_1_3_options_efr32=(
+    "-DOT_SRP_SERVER=ON"
+    "-DOT_ECDSA=ON"
+    "-DOT_SERVICE=ON"
+    "-DOT_DNSSD_SERVER=ON"
+    "-DOT_SRP_CLIENT=ON"
+)
+
+readonly build_1_3_options_nrf=(
+    ""
+)
+
 readonly build_1_2_options_common=(
     '-DOT_THREAD_VERSION=1.2'
     '-DOT_REFERENCE_DEVICE=ON'
@@ -145,6 +162,43 @@ build()
     mkdir -p "$OUTPUT_ROOT"
 
     case "${thread_version}" in
+        # Build OpenThread 1.3
+        "1.3")
+            cd ${platform_repo}
+            git clean -xfd
+
+            # Use OpenThread from top-level of repo
+            rm -rf openthread
+            ln -s ../openthread .
+
+            # Build
+            build_dir="${repo_dir}"/build-"${thread_version}"/"${platform}"
+            options=("${build_1_3_options_common[@]}")
+            case "${platform}" in
+                nrf*)
+                    options+=("${build_1_3_options_nrf[@]}")
+                    ;;
+                efr32*)
+                    options+=("-DBOARD=${BOARD}" ${build_1_3_options_efr32[@]})
+                    ;;
+            esac
+            OT_CMAKE_BUILD_DIR=${build_dir} ./script/build ${platform} ${build_type} "${options[@]}" "$@"
+
+            # Package and distribute
+            local dist_apps=(
+                ot-cli-ftd
+                ot-rcp
+            )
+            for app in ${dist_apps[@]}; do
+                package "${app}" "${thread_version}"
+            done
+
+            # Clean up
+            rm -rf openthread
+            git clean -xfd
+            git submodule update --force
+            ;;
+
         # Build OpenThread 1.2
         "1.2")
             cd ${platform_repo}
