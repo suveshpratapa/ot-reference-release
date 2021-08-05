@@ -182,7 +182,7 @@ build()
                     options+=("${build_1_3_options_nrf[@]}")
                     ;;
                 efr32*)
-                    BOARD=${BOARD?Please specify EFR32 board}
+                    BOARD=${BOARD?Please specify a EFR32 board}
                     options+=("-DBOARD=${BOARD}" ${build_1_3_options_efr32[@]})
                     ;;
             esac
