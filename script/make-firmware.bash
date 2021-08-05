@@ -85,10 +85,6 @@ readonly build_1_2_options_common=(
     '-DOT_UDP_FORWARD=OFF'
 )
 
-readonly build_1_2_options_efr32=(
-    '-DOT_CSL_RECEIVER=OFF'
-)
-
 readonly build_1_2_options_nrf=(
     '-DOT_BOOTLOADER=USB'
     '-DOT_CSL_RECEIVER=ON'
@@ -103,10 +99,6 @@ readonly build_1_1_env_common=(
     'JOINER=1'
     'MAC_FILTER=1'
     'BOOTLOADER=1'
-)
-
-readonly build_1_1_env_efr32=(
-    ""
 )
 
 readonly build_1_1_env_nrf=(
