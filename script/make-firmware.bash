@@ -40,7 +40,6 @@ repo_dir="$(dirname "$script_dir")"
 
 # Global Vars
 platform=""
-build_type=""
 build_dir=""
 
 readonly OT_PLATFORMS=(nrf52840 efr32mg1 efr32mg12 efr32mg13 efr32mg21)
@@ -114,15 +113,17 @@ readonly build_1_1_env_nrf=(
     'USB=1'
 )
 
-# $1: The basename of the file to zip, e.g. ot-cli-ftd
-# $2: Thread version number, e.g. 1.2
-# $3: The binary path (optional)
+# Environment Vars
+# - $thread_version: Thread version number, e.g. 1.2
+# Args
+# - $1: The basename of the file to zip, e.g. ot-cli-ftd
+# - $2: The binary path (optional)
 package()
 {
     # Parse Args
-    local basename=$1
-    local thread_version=$2
-    local binary_path=${3:-"${build_dir}/bin/${basename}"}
+    local basename=${1?Please specify app basename}
+    local binary_path=${2:-"${build_dir}/bin/${basename}"}
+    thread_version=${thread_version?}
 
     # Get build info
     local commit_id=$(cd "${repo_dir}"/openthread && git rev-parse --short HEAD)
@@ -151,13 +152,15 @@ package()
     mv "${zip_file}" "$OUTPUT_ROOT"
 }
 
-# $1: Path to platform's repo, e.g. ot-efr32, ot-nrf528xx
-# $2: Thread version number, e.g. 1.2
+# Envionment variables:
+# - build_type:     Type of build (optional)
+# Args:
+# - $1 - thread_version: Thread version number, e.g. 1.2
+# - $2 - platform_repo:  Path to platform's repo, e.g. ot-efr32, ot-nrf528xx
 build()
 {
-    local platform_repo=$1
-    local thread_version=$2
-    shift 2
+    thread_version=${1:-${thread_version?}}
+    platform_repo=${2:-${platform_repo?}}
 
     mkdir -p "$OUTPUT_ROOT"
 
@@ -172,17 +175,18 @@ build()
             ln -s ../openthread .
 
             # Build
-            build_dir="${repo_dir}"/build-"${thread_version}"/"${platform}"
+            build_dir=${OT_CMAKE_BUILD_DIR:-"${repo_dir}"/build-"${thread_version}"/"${platform}"}
             options=("${build_1_3_options_common[@]}")
             case "${platform}" in
                 nrf*)
                     options+=("${build_1_3_options_nrf[@]}")
                     ;;
                 efr32*)
+                    BOARD=${BOARD?Please specify EFR32 board}
                     options+=("-DBOARD=${BOARD}" ${build_1_3_options_efr32[@]})
                     ;;
             esac
-            OT_CMAKE_BUILD_DIR=${build_dir} ./script/build ${platform} ${build_type} "${options[@]}" "$@"
+            OT_CMAKE_BUILD_DIR=${build_dir} ./script/build ${platform} ${build_type:-""} "${options[@]}" "$@"
 
             # Package and distribute
             local dist_apps=(
@@ -190,7 +194,7 @@ build()
                 ot-rcp
             )
             for app in ${dist_apps[@]}; do
-                package "${app}" "${thread_version}"
+                package "${app}"
             done
 
             # Clean up
@@ -209,14 +213,14 @@ build()
             ln -s ../openthread .
 
             # Build
-            build_dir="${repo_dir}"/build-"${thread_version}"/"${platform}"
+            build_dir=${OT_CMAKE_BUILD_DIR:-"${repo_dir}"/build-"${thread_version}"/"${platform}"}
             options=("${build_1_2_options_common[@]}")
             case "${platform}" in
                 nrf*)
                     options+=("${build_1_2_options_nrf[@]}")
                     ;;
             esac
-            OT_CMAKE_BUILD_DIR=${build_dir} ./script/build ${platform} ${build_type} "${options[@]}" "$@"
+            OT_CMAKE_BUILD_DIR=${build_dir} ./script/build ${platform} ${build_type:-""} "${options[@]}" "$@"
 
             # Package and distribute
             local dist_apps=(
@@ -224,7 +228,7 @@ build()
                 ot-rcp
             )
             for app in ${dist_apps[@]}; do
-                package "${app}" "${thread_version}"
+                package "${app}"
             done
 
             # Clean up
@@ -309,21 +313,24 @@ main()
     if [ "${REFERENCE_RELEASE_TYPE?}" = "certification" ]; then
         case "${platform}" in
             nrf*)
-                build_type="USB_trans" "$@"
-                build ot-nrf528xx 1.2 "$@"
-                build ot-nrf528xx 1.1 "$@"
+                platform_repo=ot-nrf528xx
+                thread_version=1.2 build_type="USB_trans" build "$@"
+                thread_version=1.1 build_type="USB_trans" build "$@"
                 ;;
         esac
     elif [ "${REFERENCE_RELEASE_TYPE}" = "1.3" ]; then
         case "${platform}" in
             nrf*)
-                OT_CMAKE_BUILD_DIR=build-1.2 ./script/build $PLATFORM USB_trans -DOT_THREAD_VERSION=1.2
-                package ot-rcp 1.2
+                platform_repo=ot-nrf528xx
+                thread_version=1.2 build_type="USB_trans" build "$@"
                 ;;
             efr32*)
-                build ot-efr32 1.3 "$@"
+                platform_repo=ot-efr32
+                thread_version=1.3 build "$@"
                 ;;
         esac
+    else
+        die "Error: REFERENCE_RELEASE_TYPE = ${REFERENCE_RELEASE_TYPE} is unsupported"
     fi
 
 }
