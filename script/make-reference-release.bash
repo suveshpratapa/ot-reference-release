@@ -37,6 +37,7 @@ main()
     # Prebuild
     # ==========================================================================
     echo "REFERENCE_RELEASE_TYPE=${REFERENCE_RELEASE_TYPE?}"
+    mkdir -p build
     OUTPUT_ROOT=$(realpath build/ot-"${REFERENCE_RELEASE_TYPE?}-$(date +%Y%m%d)-$(cd openthread && git rev-parse --short HEAD)")
     mkdir -p $OUTPUT_ROOT
 
