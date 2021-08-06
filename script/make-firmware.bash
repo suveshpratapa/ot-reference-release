@@ -284,11 +284,17 @@ main()
     # ==========================================================================
     case "${platform}" in
         nrf*)
-            # Setup nrfutil-linux
-            NRFUTIL=/tmp/nrfutil-linux
+            # Setup nrfutil
+            if [[ $OSTYPE == "linux"* ]]; then
+                ostype=linux
+            elif [[ $OSTYPE == "darwin"* ]]; then
+                ostype=mac
+            fi
+            NRFUTIL=/tmp/nrfutil-${ostype}
+
             if [ ! -f $NRFUTIL ]; then
-            wget -O $NRFUTIL https://github.com/NordicSemiconductor/pc-nrfutil/releases/download/v6.1/nrfutil-linux
-            chmod +x $NRFUTIL
+                wget -O $NRFUTIL https://github.com/NordicSemiconductor/pc-nrfutil/releases/download/v6.1/nrfutil-${ostype}
+                chmod +x $NRFUTIL
             fi
 
             # Generate private key
