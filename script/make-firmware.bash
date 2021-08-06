@@ -128,6 +128,7 @@ package()
         return
     fi
     arm-none-eabi-objcopy -O ihex "$binary_path" "${hex_file}"
+    arm-none-eabi-objcopy -O ihex "$binary_path" "${hex_file}"
 
     # Zip
     local zip_file="${basename}-${thread_version}-${timestamp}-${commit_id}.zip"
@@ -277,7 +278,9 @@ main()
     shift
 
     # Print OUTPUT_ROOT. Error if OUTPUT_ROOT is not defined
-    echo "OUTPUT_ROOT=${OUTPUT_ROOT?}"
+    OUTPUT_ROOT=$(realpath ${OUTPUT_ROOT?})
+    echo "OUTPUT_ROOT=${OUTPUT_ROOT}"
+    mkdir -p ${OUTPUT_ROOT}
 
     # ==========================================================================
     # Prebuild
