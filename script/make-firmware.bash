@@ -146,7 +146,8 @@ package()
 }
 
 # Envionment variables:
-# - build_type:     Type of build (optional)
+# - build_type:             Type of build (optional)
+# - build_script_flags:     Any flags specific to the platform repo's build script (optional)
 # Args:
 # - $1 - thread_version: Thread version number, e.g. 1.2
 # - $2 - platform_repo:  Path to platform's repo, e.g. ot-efr32, ot-nrf528xx
@@ -178,7 +179,7 @@ build()
                     options+=("-DBOARD=brd4166a" ${build_1_3_options_efr32[@]})
                     ;;
             esac
-            OT_CMAKE_BUILD_DIR=${build_dir} ./script/build ${platform} ${build_type:-""} "${options[@]}" "$@"
+            OT_CMAKE_BUILD_DIR=${build_dir} ./script/build ${build_script_flags:-""} ${platform} ${build_type:-""} "${options[@]}" "$@"
 
             # Package and distribute
             local dist_apps=(
@@ -326,7 +327,7 @@ main()
                 ;;
             efr32*)
                 platform_repo=ot-efr32
-                thread_version=1.3 build "$@"
+                build_script_flags="--skip-silabs-apps" thread_version=1.3 build "$@"
                 ;;
         esac
     else
