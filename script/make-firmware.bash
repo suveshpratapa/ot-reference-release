@@ -45,15 +45,15 @@ build_dir=""
 readonly OT_PLATFORMS=(nrf52840 efr32mg12)
 
 readonly build_1_3_options_common=(
-    ""
-)
-
-readonly build_1_3_options_efr32=(
     "-DOT_SRP_SERVER=ON"
     "-DOT_ECDSA=ON"
     "-DOT_SERVICE=ON"
     "-DOT_DNSSD_SERVER=ON"
     "-DOT_SRP_CLIENT=ON"
+)
+
+readonly build_1_3_options_efr32=(
+    ""
 )
 
 readonly build_1_3_options_nrf=(
@@ -153,49 +153,12 @@ package()
 # - $2 - platform_repo:  Path to platform's repo, e.g. ot-efr32, ot-nrf528xx
 build()
 {
-    thread_version=${1:-${thread_version?}}
-    platform_repo=${2:-${platform_repo?}}
+    thread_version=${thread_version?}
+    platform_repo=${platform_repo?}
 
     mkdir -p "$OUTPUT_ROOT"
 
     case "${thread_version}" in
-        # Build OpenThread 1.3
-        "1.3")
-            cd ${platform_repo}
-            git clean -xfd
-
-            # Use OpenThread from top-level of repo
-            rm -rf openthread
-            ln -s ../openthread .
-
-            # Build
-            build_dir=${OT_CMAKE_BUILD_DIR:-"${repo_dir}"/build-"${thread_version}"/"${platform}"}
-            options=("${build_1_3_options_common[@]}")
-            case "${platform}" in
-                nrf*)
-                    options+=("${build_1_3_options_nrf[@]}")
-                    ;;
-                efr32mg12)
-                    options+=("-DBOARD=brd4166a" ${build_1_3_options_efr32[@]})
-                    ;;
-            esac
-            OT_CMAKE_BUILD_DIR=${build_dir} ./script/build ${build_script_flags:-""} ${platform} ${build_type:-""} "${options[@]}" "$@"
-
-            # Package and distribute
-            local dist_apps=(
-                ot-cli-ftd
-                ot-rcp
-            )
-            for app in ${dist_apps[@]}; do
-                package "${app}"
-            done
-
-            # Clean up
-            rm -rf openthread
-            git clean -xfd
-            git submodule update --force
-            ;;
-
         # Build OpenThread 1.2
         "1.2")
             cd ${platform_repo}
@@ -207,13 +170,7 @@ build()
 
             # Build
             build_dir=${OT_CMAKE_BUILD_DIR:-"${repo_dir}"/build-"${thread_version}"/"${platform}"}
-            options=("${build_1_2_options_common[@]}")
-            case "${platform}" in
-                nrf*)
-                    options+=("${build_1_2_options_nrf[@]}")
-                    ;;
-            esac
-            OT_CMAKE_BUILD_DIR=${build_dir} ./script/build ${platform} ${build_type:-""} "${options[@]}" "$@"
+            OT_CMAKE_BUILD_DIR=${build_dir} ./script/build ${build_script_flags:-} ${platform} ${build_type:-} "$@"
 
             # Package and distribute
             local dist_apps=(
@@ -239,12 +196,6 @@ build()
             ./bootstrap
 
             # Build
-            options=("${build_1_1_env_common[@]}")
-            case "${platform}" in
-                nrf*)
-                    options+=("${build_1_1_env_nrf[@]}")
-                    ;;
-            esac
             make -f examples/Makefile-${platform} "${options[@]}" "$@"
 
             # Package and distribute
@@ -266,23 +217,9 @@ build()
 
 die() { echo "$*" 1>&2 ; exit 1; }
 
-main()
+prebuild_and_build()
 {
-    if [[ $# == 0 ]]; then
-        echo "Please specify a platform: ${OT_PLATFORMS[*]}"
-        exit 1
-    fi
-
-    # Check if the platform is supported.
-    platform="$1"
-    echo "${OT_PLATFORMS[@]}" | grep -wq "${platform}" || die "ERROR: Unsupported platform: ${platform}"
-    shift
-
-    # Print OUTPUT_ROOT. Error if OUTPUT_ROOT is not defined
-    OUTPUT_ROOT=$(realpath ${OUTPUT_ROOT?})
-    echo "OUTPUT_ROOT=${OUTPUT_ROOT}"
-    mkdir -p ${OUTPUT_ROOT}
-
+    platform=$1
     # ==========================================================================
     # Prebuild
     # ==========================================================================
@@ -312,27 +249,63 @@ main()
     # Build
     # ==========================================================================
     if [ "${REFERENCE_RELEASE_TYPE?}" = "certification" ]; then
+        build_1_2_options=("${build_1_2_options_common[@]}")
+        build_1_1_env=("${build_1_1_env_common[@]}")
+
         case "${platform}" in
             nrf*)
+                build_1_2_options+=("${build_1_2_options_nrf[@]}")
+                build_1_1_env+=("${build_1_1_env_nrf[@]}")
                 platform_repo=ot-nrf528xx
-                thread_version=1.2 build_type="USB_trans" build "$@"
-                thread_version=1.1 build_type="USB_trans" build "$@"
+
+                thread_version=1.2 build_type="USB_trans" build "${1_2_options[@]}" "$@"
+                thread_version=1.1 build_type="USB_trans" build "${1_1_env[@]}" "$@"
                 ;;
         esac
     elif [ "${REFERENCE_RELEASE_TYPE}" = "1.3" ]; then
+        options=("${build_1_3_options_common[@]}")
+
         case "${platform}" in
             nrf*)
+                options+=("${build_1_3_options_nrf[@]}")
                 platform_repo=ot-nrf528xx
-                thread_version=1.2 build_type="USB_trans" build "$@"
+
+                thread_version=1.2 build_type="USB_trans" build "${options[@]}" "$@"
                 ;;
             efr32*)
+                options+=("${build_1_3_options_efr32[@]}")
                 platform_repo=ot-efr32
-                build_script_flags="--skip-silabs-apps" thread_version=1.3 build "$@"
+
+                thread_version=1.2 build_script_flags="--skip-silabs-apps" build "${options[@]}" "$@"
                 ;;
         esac
     else
         die "Error: REFERENCE_RELEASE_TYPE = ${REFERENCE_RELEASE_TYPE} is unsupported"
     fi
+}
+
+main()
+{
+    local platforms=()
+
+    if [[ $# == 0 ]]; then
+        platforms=("${OT_PLATFORMS[@]}")
+    else
+        platforms=("$1")
+        shift
+    fi
+
+    # Print OUTPUT_ROOT. Error if OUTPUT_ROOT is not defined
+    OUTPUT_ROOT=$(realpath ${OUTPUT_ROOT?})
+    echo "OUTPUT_ROOT=${OUTPUT_ROOT}"
+    mkdir -p ${OUTPUT_ROOT}
+
+    for p in ${platforms[@]}; do
+        # Check if the platform is supported.
+        echo "${OT_PLATFORMS[@]}" | grep -wq "${p}" || die "ERROR: Unsupported platform: ${p}"
+        printf "\n\n======================================\nBuilding firmware for ${p}\n======================================\n\n"
+        prebuild_and_build ${p}
+    done
 
 }
 
