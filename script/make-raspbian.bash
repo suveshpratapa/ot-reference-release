@@ -56,7 +56,6 @@ cleanup() {
         sudo losetup -d "${loop}"
     done
 
-
     set -e
 }
 
@@ -94,7 +93,16 @@ main() {
     if [[ ! -f /usr/bin/pishrink.sh ]]; then
       sudo wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh -O /usr/bin/pishrink.sh && sudo chmod a+x /usr/bin/pishrink.sh
     fi
+
+    set +e
     sudo /usr/bin/pishrink.sh $STAGE_DIR/otbr.img
+    retVal=$?
+    # Ignore error when pishrink can't shrink the image any further
+    if [[ $retVal -ne 11 ]] && [[ $retVal -ne 0 ]]; then
+      exit $retval
+    fi
+    set -e
+
     if [[ -n ${SD_CARD:=} ]]; then
       sudo sh -c "dcfldd if=$STAGE_DIR/otbr.img of=$SD_CARD bs=1m && sync"
     fi
