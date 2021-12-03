@@ -29,6 +29,15 @@
 
 set -euxo pipefail
 
+if [[ -n ${BASH_SOURCE[0]} ]]; then
+    script_path="${BASH_SOURCE[0]}"
+else
+    script_path="$0"
+fi
+
+script_dir="$(dirname "$(realpath "$script_path")")"
+repo_dir="$(dirname "$script_dir")"
+
 IMAGE_URL=https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2021-05-28/2021-05-07-raspios-buster-armhf-lite.zip
 echo "REFERENCE_RELEASE_TYPE=${REFERENCE_RELEASE_TYPE?}"
 echo "IN_CHINA=${IN_CHINA:=0}"
@@ -106,7 +115,7 @@ main() {
     if [[ -n ${SD_CARD:=} ]]; then
       sudo sh -c "dcfldd if=$STAGE_DIR/otbr.img of=$SD_CARD bs=1m && sync"
     fi
-    IMG_ZIP_FILE=otbr."$(date +%Y%m%d)".img.zip
+    IMG_ZIP_FILE="otbr.ot-${REFERENCE_RELEASE_TYPE?}-$(date +%Y%m%d)-$(cd ${repo_dir}/openthread && git rev-parse --short HEAD).img.zip"
     (cd $STAGE_DIR && zip "$IMG_ZIP_FILE" otbr.img && mv "$IMG_ZIP_FILE" "$OUTPUT_ROOT")
 
   )
