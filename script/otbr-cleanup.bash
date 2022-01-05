@@ -35,15 +35,15 @@ readonly OTBR_BUILD_DEPS='apt-utils build-essential ninja-build cmake wget ca-ce
   libnetfilter-queue-dev npm nodejs'
 readonly OTBR_DOCKER_DEPS='git ca-certificates'
 
-cd /home/pi/repo/ot-br-posix
-mv ./script /tmp
-mv ./etc /tmp
-find . -delete
-rm -rf /usr/include
-mv /tmp/script .
-mv /tmp/etc .
-apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false $OTBR_DOCKER_DEPS || true
-apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false $OTBR_BUILD_DEPS || true
-rm -rf /var/lib/apt/lists/*
+#cd /home/pi/repo/ot-br-posix
+#mv ./script /tmp
+#mv ./etc /tmp
+#find . -delete
+#rm -rf /usr/include
+#mv /tmp/script .
+#mv /tmp/etc .
+#apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false $OTBR_DOCKER_DEPS || true
+#apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false $OTBR_BUILD_DEPS || true
+#rm -rf /var/lib/apt/lists/*
 
 sync
