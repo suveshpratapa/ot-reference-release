@@ -58,7 +58,7 @@ P2_NAME=${LOOP_BASE}p2
 
 # Mount image with the offsets determined above
 mkdir -p "$2"
-mount "$P2_NAME" -o rw /media/rpi
-mount "$P1_NAME" -o rw /media/rpi/boot
+mount "$P2_NAME" -o rw "$2"
+mount "$P1_NAME" -o rw "$2"/boot
 
 echo "Mounted to $2 and $2/boot"
