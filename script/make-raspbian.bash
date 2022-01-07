@@ -51,7 +51,7 @@ fi
 
 BUILD_TARGET=raspbian-gcc
 STAGE_DIR=/tmp/raspbian
-IMAGE_DIR=/media/rpi
+IMAGE_DIR=${repo_dir}/media/rpi
 TOOLS_HOME=$HOME/.cache/tools
 
 cleanup() {
