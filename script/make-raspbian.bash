@@ -90,8 +90,8 @@ main() {
     sudo mkdir -p "$IMAGE_DIR"/home/pi/repo
     sudo tar xzf "$STAGE_DIR"/repo.tar.gz --absolute-names --strip-components 1 -C "$IMAGE_DIR"/home/pi/repo
     sudo ./qemu-setup.sh "$IMAGE_DIR"
-#    sudo chroot "$IMAGE_DIR" /bin/bash /home/pi/repo/script/otbr-setup.bash "${REFERENCE_RELEASE_TYPE?}" "$IN_CHINA" "${REFERENCE_PLATFORM?}"
-#    sudo chroot "$IMAGE_DIR" /bin/bash /home/pi/repo/script/otbr-cleanup.bash
+    sudo chroot "$IMAGE_DIR" /bin/bash /home/pi/repo/script/otbr-setup.bash "${REFERENCE_RELEASE_TYPE?}" "$IN_CHINA" "${REFERENCE_PLATFORM?}"
+    sudo chroot "$IMAGE_DIR" /bin/bash /home/pi/repo/script/otbr-cleanup.bash
     echo "enable_uart=1" | sudo tee -a "$IMAGE_DIR"/boot/config.txt
     echo "dtoverlay=pi3-disable-bt" | sudo tee -a "$IMAGE_DIR"/boot/config.txt
     echo "dtoverlay=pi3-disable-wifi" | sudo tee -a "$IMAGE_DIR"/boot/config.txt
