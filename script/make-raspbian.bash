@@ -82,7 +82,8 @@ main() {
   python3 -m git_archive_all "$STAGE_DIR"/repo.tar.gz
 
   sudo mkdir -p "$IMAGE_DIR"
-  sudo script/mount.bash "$STAGE_DIR"/raspbian.img "$IMAGE_DIR"
+  sudo chown -R $USER: "$IMAGE_DIR"
+  script/mount.bash "$STAGE_DIR"/raspbian.img "$IMAGE_DIR"
 
   (
     cd docker-rpi-emu/scripts
