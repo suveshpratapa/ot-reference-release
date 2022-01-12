@@ -117,7 +117,9 @@ main() {
     if [[ -n ${SD_CARD:=} ]]; then
       sudo sh -c "dcfldd if=$STAGE_DIR/otbr.img of=$SD_CARD bs=1m && sync"
     fi
-    IMG_ZIP_FILE="otbr.ot-${REFERENCE_RELEASE_TYPE?}-$(date +%Y%m%d)-$(cd ${repo_dir}/openthread && git rev-parse --short HEAD).img.zip"
+    OPENTHREAD_COMMIT_HASH=$(cd ${repo_dir}/openthread && git rev-parse --short HEAD)
+    OT_BR_POSIX_COMMIT_HASH=$(cd ${repo_dir}/ot-br-posix && git rev-parse --short HEAD)
+    IMG_ZIP_FILE="otbr.${REFERENCE_RELEASE_TYPE?}-$(date +%Y%m%d).ot_${OPENTHREAD_COMMIT_HASH}.ot-br_${OT_BR_POSIX_COMMIT_HASH}.img.zip"
     (cd $STAGE_DIR && zip "$IMG_ZIP_FILE" otbr.img && mv "$IMG_ZIP_FILE" "$OUTPUT_ROOT")
 
   )
