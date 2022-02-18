@@ -306,7 +306,7 @@ deploy_ncs()
     cd nrf
     git fetch origin
     git reset --hard "$commit_hash" || die "ERROR: unable to checkout the specified sdk-nrf commit."
-    west update
+    west update -n -o=--depth=1
     cd ..
     pip3 install --user -r zephyr/scripts/requirements.txt
     pip3 install --user -r nrf/scripts/requirements.txt
@@ -339,7 +339,7 @@ build_ncs()
 
   cd nrf
   for variant in ${variants[@]}; do
-      west build -d ${!variant:0:1} -b nrf52840dongle_nrf52840 -p always ${!variant:1:1} -- -DOVERLAY_CONFIG=${!variant:2:1}
+      west build -d ${!variant:0:1} -b nrf52840dongle_nrf52840 -p always ${!variant:1:1} -- -DOVERLAY_CONFIG=${!variant:2:1} -DDTC_OVERLAY_FILE=usb.overlay
   done
 
   package_ncs "ot-cli-ftd" "1.1"
