@@ -51,7 +51,7 @@ fi
 
 BUILD_TARGET=raspbian-gcc
 STAGE_DIR=/tmp/raspbian
-IMAGE_DIR=${repo_dir}/media/rpi
+IMAGE_DIR=${repo_dir}/mnt-rpi
 TOOLS_HOME=$HOME/.cache/tools
 
 cleanup() {
@@ -81,8 +81,9 @@ main() {
 
   python3 -m git_archive_all "$STAGE_DIR"/repo.tar.gz
 
-  sudo mkdir -p "$IMAGE_DIR"
-  sudo chown -R $USER: "$IMAGE_DIR"
+  mkdir -p "$IMAGE_DIR"
+  chown -R $USER: "$IMAGE_DIR"
+  ls -alh "$IMAGE_DIR"
   script/mount.bash "$STAGE_DIR"/raspbian.img "$IMAGE_DIR"
 
   (
