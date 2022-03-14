@@ -96,7 +96,6 @@ main() {
     sudo chroot "$IMAGE_DIR" /bin/bash /home/pi/repo/script/otbr-cleanup.bash
     echo "enable_uart=1" | sudo tee -a "$IMAGE_DIR"/boot/config.txt
     echo "dtoverlay=pi3-disable-bt" | sudo tee -a "$IMAGE_DIR"/boot/config.txt
-    echo "dtoverlay=pi3-disable-wifi" | sudo tee -a "$IMAGE_DIR"/boot/config.txt
     sudo touch "$IMAGE_DIR"/boot/ssh && sync && sleep 1
     sudo ./qemu-cleanup.sh "$IMAGE_DIR"
     LOOP_NAME=$(losetup -j $STAGE_DIR/raspbian.img --output NAME -n)
